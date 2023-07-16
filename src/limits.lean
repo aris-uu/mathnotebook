@@ -1,11 +1,15 @@
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Real.Sqrt
 
-def limit (c l : ℝ) (f : ℝ → ℝ) := ∀ ε : ℝ, ε > 0 → ∃ δ : ℝ, δ > 0 ∧ ∀ x : ℝ, (0 < |x - c| ∧ |x - c| < δ) → |f x - l| < ε
+open Classical
+
+def limit (c l : ℝ) (f : ℝ → ℝ) := ∀ ε : ℝ, ε > 0 →
+                                    ∃ δ : ℝ, δ > 0 ∧
+                                    ∀ x : ℝ,
+                                    (0 < |x - c| ∧ |x - c| < δ) → |f x - l| < ε
 
 def f (x : ℝ) := x
 
--- limit x -> a (x) = a
 theorem test (a : ℝ) : limit a a (λ x => x) := by
   intros ε ε_pos
   use ε
@@ -17,11 +21,14 @@ theorem test (a : ℝ) : limit a a (λ x => x) := by
   simp
   exact h2
 
+-- limit x -> a (x) = a
+
 lemma lemma_1 {x x0 y y0 ε : ℝ}
               (h1 : |x - x0| < ε/2)
               (h2 : |y - y0| < ε/2) :
               |(x + y) - (x0 + y0)| < ε := by
-  sorry
+  rw [abs_lt] at *
+  constructor <;> linarith
 
 theorem lim_add {a l m : ℝ}
                 {f g : ℝ → ℝ}
@@ -47,11 +54,48 @@ theorem lim_add {a l m : ℝ}
   have lim2 := lim2 x ⟨h1, h4⟩
   exact lemma_1 lim1 lim2
 
-lemma lemma_2 {x x0 y y0 ε : ℝ}
-              (h1 : |x - x0| < min 1 (ε / (2 * (|y0| + 1))))
-              (h2 : |y - y0| < (ε / (2 * (|x0| + 1)))) :
-              |x * y - x0 * y0| < ε := by
+lemma prod_limit_eq_0 {c : ℝ} {f g : ℝ → ℝ}
+                      (lim1 : limit c 0 f)
+                      (lim2 : limit c 0 g) :
+                      limit c 0 (f * g) := by
+  rw [limit] at lim1 lim2
+  intro ε εpos
+  rcases lim1 ε εpos with ⟨δ1, δ1_pos, h1⟩
+  rcases lim2 1 (by norm_num) with ⟨δ2, δ2_pos, h2⟩
+  use min δ1 δ2, lt_min δ1_pos δ2_pos
+  rintro x ⟨h3, h4⟩
+  specialize h1 x ⟨h3, lt_of_lt_of_le h4 (min_le_left δ1 δ2)⟩
+  specialize h2 x ⟨h3, lt_of_lt_of_le h4 (min_le_right δ1 δ2)⟩
+  rw [sub_zero] at *
+  dsimp
+  rw [abs_mul]
+  rw [← mul_one ε]
+  exact mul_lt_mul'' h1 h2 (abs_nonneg (f x)) (abs_nonneg (g x))
+--  nlinarith [abs_nonneg (f x), abs_nonneg (g x)]
+
+theorem limit_mul_const {c l : ℝ} {f : ℝ → ℝ} (d : ℝ) (lim1 : limit c l f) : limit c (d * l) (fun x => d * f x) :=
   sorry
+
+theorem limit_sub {a l m : ℝ}
+        {f g : ℝ → ℝ}
+        (lim1 : limit a l f)
+        (lim2 : limit a m g) :
+        limit a (l - m) (f - g) := by
+  rw [sub_eq_add_neg, sub_eq_add_neg]
+  apply lim_add lim1
+  have h := limit_mul_const (-1) lim2
+  convert h using 1
+  . simp
+  . ext x
+    simp
+
+example : limit c l f ↔ limit c 0 (fun x => f x - l) := by sorry
+
+-- lemma lemma_2 {x x0 y y0 ε : ℝ}
+--               (h1 : |x - x0| < min 1 (ε / (2 * (|y0| + 1))))
+--               (h2 : |y - y0| < (ε / (2 * (|x0| + 1)))) :
+--               |x * y - x0 * y0| < ε := by
+  -- rw [lt_abs] at *
 
 theorem lim_mul {a l m : ℝ}
                 {f g : ℝ → ℝ}
@@ -97,7 +141,8 @@ theorem lim_mul {a l m : ℝ}
   have h4 := lt_of_lt_of_le h2 (min_le_right δ₁ δ₂)
   have lim1 := lim1 x ⟨h1, h3⟩
   have lim2 := lim2 x ⟨h1, h4⟩
-  exact lemma_2 lim1 lim2
+  -- exact lemma_2 lim1 lim2
+  sorry
 
 lemma lemma_3 {y y0 ε : ℝ}
               (h : |y - y0| <  min (|y0|/2) ((ε * |y0|^2)/2)) :
@@ -136,24 +181,16 @@ theorem lim_inv {a m : ℝ} {h : m > 0}
 
 theorem no_7 : ¬ (∀ ε : ℝ, ε > 0 →
                   ∀ δ : ℝ, δ > 0 →
-                  ∀ x : ℝ,
-                  (((0 < |x| ∧ |x| < δ) → |Real.sqrt (abs x)| < ε) → 
-                  (0 < |x| ∧ |x| < δ/2) → |Real.sqrt (abs x)| < ε/2)) := by
+                  (∀ x : ℝ, 0 < |x| → |x| < δ → |Real.sqrt (abs x)| < ε) →
+                  (∀ x : ℝ ,0 < |x| → |x| < δ/2 → |Real.sqrt (abs x)| < ε/2)) := by
   push_neg
-  let ε : ℝ := 1/2
-  use ε
-  apply And.intro
-  simp
-  use ε^2
-  apply And.intro
-  simp
-  use ε^2/4
-  apply And.intro
-  sorry
-  apply And.intro
-  sorry
+  use 1/2
   norm_num
-  sorry
+  use 1/4
+  norm_num
+  refine ⟨?_, ?_⟩
+  · sorry
+  · sorry
 
 
 
