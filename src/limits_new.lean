@@ -90,3 +90,22 @@ example (a : ℝ) : lim' a (λ x => x) = a := by
   apply lim'_spec
   use a
   exact test a
+
+lemma delta_1 (x : ℝ) (h : |x-1| < 1/2) : |2*x-2| < 1 := by
+  nth_rewrite 2 [← mul_one 2]
+  rw [← mul_sub, abs_mul, abs_of_pos]
+  linarith
+  linarith
+
+lemma delta_3 (x : ℝ) (h : |x-1| < 1/2) : 1/2 < x ∧ x < 2 := by
+  apply And.intro <;> rw [abs_lt] at h <;> linarith
+  
+lemma delta_3_max (δ : ℝ)
+                  (h : ∀ x : ℝ, |x-1| < δ → 1/2 < x ∧ x < 2)
+                  : δ ≤ 1/2 := by
+  by_contra
+  have h1 : abs (3 / 4 - δ / 2 - 1) < δ
+  . rw [abs_lt]
+    apply And.intro <;> linarith
+  specialize h (3/4 - δ/2) h1
+  linarith
